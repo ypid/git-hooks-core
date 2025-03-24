@@ -1,0 +1,13 @@
+---
+# SPDX-FileCopyrightText: 2025 Robin Schneider <ypid@riseup.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# See https://pre-commit.com for more information.
+# See https://pre-commit.com/hooks.html for more hooks.
+
+repos:
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: 119ed76a0da67a4a09fff7ab55c42f5519680289  # frozen: v3.11.0-1
+    hooks:
+      - id: shfmt-docker
