@@ -17,6 +17,3 @@ indent_size = 2
 
 [hook.sh]
 indent_size = 4
-
-[*.d/**]
-indent_size = 4

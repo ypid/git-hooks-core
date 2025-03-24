@@ -1,67 +1,30 @@
 #!/usr/bin/env bash
 
-set -eu
-
 _stdin=$(cat)
+
+PS4='+ $(date --rfc-3339=seconds), ${BASH_SOURCE-}:${LINENO-}: '
+export PS4
+trap 'echo Unhandled error at ${BASH_SOURCE-}:${LINENO-} caused exit with code $?. >&2' ERR
+set -o nounset -o pipefail -o errexit -o errtrace
+
+global_hooks_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/global_hooks"
+global_specific_hook_dir_d="${global_hooks_dir}/$(basename "${0}").d"
+if [ -d "$global_specific_hook_dir_d" ]; then
+    for hook in "$global_specific_hook_dir_d"/*; do
+        if [ "$_stdin" = "" ]; then
+            "$hook" "$@" || exit $?
+        else
+            "$hook" "$@" <<<"$_stdin" || exit $?
+        fi
+    done
+fi
 
 git_dir=$(git rev-parse --git-dir)
 script_name=$(basename "$0")
-if [ -f "${git_dir}/hooks/${script_name}" ]; then
+if [ -x "${git_dir}/hooks/${script_name}" ]; then
     if [ "$_stdin" = "" ]; then
-        "${git_dir}/hooks/${script_name}" "$@"
+        "${git_dir}/hooks/${script_name}" "$@" || exit $?
     else
-        "${git_dir}/hooks/${script_name}" "$@" <<<"$_stdin"
+        "${git_dir}/hooks/${script_name}" "$@" <<<"$_stdin" || exit $?
     fi
 fi
-
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WHITELISTS=${DIR}/whitelists
-
-whitelisted() {
-    file=$1
-    path=${DIR}/whitelists.d/$file
-
-    if [ -f "$path" ]; then
-        while read -r; do
-            if [ "$REPLY" == "$PWD" ]; then
-                return 0
-            fi
-        done <"$path"
-    fi
-
-    return 1
-}
-
-whitelist=""
-
-has_whitelist() {
-    hookPath=$1
-
-    while read -ra LINE; do
-        whitelistEntry="${LINE[0]}"
-        if [ "$hookPath" == "$whitelistEntry" ]; then
-            whitelist="${LINE[1]}"
-            return 0
-        fi
-    done <"$WHITELISTS"
-
-    return 1
-}
-
-HOOKS_DIR="${DIR}/$(basename "${0}").d"
-
-for hook in "$(ls "$HOOKS_DIR")"; do
-    REL_HOOK="$(basename "${0}").d"/$hook
-
-    if has_whitelist "$REL_HOOK"; then
-        if whitelisted "$whitelist"; then
-            continue
-        fi
-    fi
-
-    if [ "$_stdin" = "" ]; then
-        "$HOOKS_DIR/$hook" "$@"
-    else
-        "$HOOKS_DIR/$hook" "$@" <<<"$_stdin"
-    fi
-done
