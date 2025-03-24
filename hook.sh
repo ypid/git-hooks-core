@@ -4,64 +4,64 @@ set -eu
 
 _stdin=$(cat)
 
-git_dir=$( git rev-parse --git-dir )
+git_dir=$(git rev-parse --git-dir)
 script_name=$(basename "$0")
 if [ -f "${git_dir}/hooks/${script_name}" ]; then
-  if [ "$_stdin" = "" ]; then
-      "${git_dir}/hooks/${script_name}" "$@"
-  else
-      "${git_dir}/hooks/${script_name}" "$@" <<< "$_stdin"
-  fi
+    if [ "$_stdin" = "" ]; then
+        "${git_dir}/hooks/${script_name}" "$@"
+    else
+        "${git_dir}/hooks/${script_name}" "$@" <<<"$_stdin"
+    fi
 fi
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHITELISTS=${DIR}/whitelists
 
 whitelisted() {
-  file=$1
-  path=${DIR}/whitelists.d/$file
+    file=$1
+    path=${DIR}/whitelists.d/$file
 
-  if [ -f "$path" ]; then
-    while read -r; do
-      if [ "$REPLY" == "$PWD" ]; then
-        return 0
-      fi
-    done < "$path"
-  fi
+    if [ -f "$path" ]; then
+        while read -r; do
+            if [ "$REPLY" == "$PWD" ]; then
+                return 0
+            fi
+        done <"$path"
+    fi
 
-  return 1
+    return 1
 }
 
 whitelist=""
 
 has_whitelist() {
-  hookPath=$1
+    hookPath=$1
 
-  while read -ra LINE; do
-    whitelistEntry="${LINE[0]}"
-    if [ "$hookPath" == "$whitelistEntry" ]; then
-      whitelist="${LINE[1]}"
-      return 0
-    fi
-  done < "$WHITELISTS"
+    while read -ra LINE; do
+        whitelistEntry="${LINE[0]}"
+        if [ "$hookPath" == "$whitelistEntry" ]; then
+            whitelist="${LINE[1]}"
+            return 0
+        fi
+    done <"$WHITELISTS"
 
-  return 1
+    return 1
 }
 
-HOOKS_DIR="${DIR}/$( basename "${0}" ).d"
+HOOKS_DIR="${DIR}/$(basename "${0}").d"
 
-for hook in "$( ls "$HOOKS_DIR" )"; do
-  REL_HOOK="$( basename "${0}" ).d"/$hook
+for hook in "$(ls "$HOOKS_DIR")"; do
+    REL_HOOK="$(basename "${0}").d"/$hook
 
-  if has_whitelist "$REL_HOOK"; then
-    if whitelisted "$whitelist"; then
-      continue
+    if has_whitelist "$REL_HOOK"; then
+        if whitelisted "$whitelist"; then
+            continue
+        fi
     fi
-  fi
 
-  if [ "$_stdin" = "" ]; then
-      "$HOOKS_DIR/$hook" "$@"
-  else
-      "$HOOKS_DIR/$hook" "$@" <<< "$_stdin"
-  fi
+    if [ "$_stdin" = "" ]; then
+        "$HOOKS_DIR/$hook" "$@"
+    else
+        "$HOOKS_DIR/$hook" "$@" <<<"$_stdin"
+    fi
 done
